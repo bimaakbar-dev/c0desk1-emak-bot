@@ -4,7 +4,6 @@ export interface Env {
   BOT_TOKEN: string;
 }
 
-// Daftar kata kasar (bisa ditambah)
 const BAD_WORDS = [
   "anjing",
   "bangsat",
@@ -16,24 +15,27 @@ const BAD_WORDS = [
   "kimak",
   "kampret",
   "tai",
+  "asu",
 ];
 
-// Rate limit: max pesan per detik
 const SPAM_LIMIT = 5;
-const SPAM_WINDOW = 3000; // 3 detik
+const SPAM_WINDOW = 3000;
 
-// Map untuk tracking spam per user
 const userMessages = new Map<number, number[]>();
 
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const bot = new Bot(env.BOT_TOKEN);
 
+    // Helper: username dengan fallback
+    const getUserName = (ctx: any) =>
+      ctx.from?.username || ctx.from?.first_name || "Nak";
+
     // Command: /start
     bot.command("start", (ctx) =>
       ctx.reply(
-        "Halo! Aku Emakc0desk1_bot.\n\n" +
-          "Tugasku menjaga ketertiban grup discuss c0desk1.\n\n" +
+        "Halo! ini Emak c0desk1.\n\n" +
+          "Tugas emak menjaga ketertiban grup c0desk1.\n\n" +
           "Command:\n" +
           "/start - Mulai bot\n" +
           "/help - Bantuan\n" +
@@ -48,7 +50,7 @@ export default {
           "/start - Mulai bot\n" +
           "/help - Bantuan\n" +
           "/rules - Aturan grup\n\n" +
-          "Aku akan otomatis menghapus pesan yang melanggar aturan."
+          "Emak akan otomatis menghapus pesan yang melanggar aturan."
       )
     );
 
@@ -75,20 +77,25 @@ export default {
       // Skip kalau admin
       try {
         const member = await ctx.getChatMember(userId);
-        if (member.status === "administrator" || member.status === "creator") {
+        if (member.status === "administrator" || member.status === "creator" || member.status === "owner") {
           return next();
         }
       } catch (e) {
-        // ignore error
+        // ignore
       }
 
+      const userName = getUserName(ctx);
+
       // Cek bad words
-      const hasBadWord = BAD_WORDS.some((word) => text.includes(word));
+      const hasBadWord = BAD_WORDS.some((word) =>
+        new RegExp(`\\b${word}\\b`, "i").test(text)
+      );
+
       if (hasBadWord) {
         try {
           await ctx.deleteMessage();
           await ctx.reply(
-            `⚠️ ${ctx.from?.first_name}, pesanmu mengandung kata yang tidak pantas dan sudah dihapus.`
+            `⚠️ ${userName}, pesanmu mengandung kata yang tidak pantas dan sudah dihapus.`
           );
         } catch (e) {
           console.error("Delete failed:", e);
@@ -107,7 +114,7 @@ export default {
         try {
           await ctx.deleteMessage();
           await ctx.reply(
-            `⚠️ ${ctx.from?.first_name}, jangan spam ya. Tunggu sebentar.`
+            `⚠️ ${userName}, jangan spam ya. Tunggu sebentar.`
           );
         } catch (e) {
           console.error("Spam action failed:", e);
@@ -118,7 +125,6 @@ export default {
       return next();
     });
 
-    // Handler webhook
     const handler = webhookCallback(bot, "cloudflare-mod");
     return handler(request);
   },
