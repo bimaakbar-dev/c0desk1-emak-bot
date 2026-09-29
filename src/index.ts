@@ -16,6 +16,7 @@ const BAD_WORDS = [
   "kampret",
   "tai",
   "asu",
+  "jembud",
 ];
 
 const SPAM_LIMIT = 5;
@@ -27,15 +28,14 @@ export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const bot = new Bot(env.BOT_TOKEN);
 
-    // Helper: username dengan fallback
     const getUserName = (ctx: any) =>
       ctx.from?.username || ctx.from?.first_name || "Nak";
 
     // Command: /start
     bot.command("start", (ctx) =>
       ctx.reply(
-        "Halo! ini Emak c0desk1.\n\n" +
-          "Tugas emak menjaga ketertiban grup c0desk1.\n\n" +
+        "Halo! Ini Emak c0desk1.\n\n" +
+          "Tugasku menjaga ketertiban grup c0desk1.\n\n" +
           "Command:\n" +
           "/start - Mulai bot\n" +
           "/help - Bantuan\n" +
@@ -70,14 +70,21 @@ export default {
 
     // Filter: cek bad words & spam
     bot.on("message:text").use(async (ctx, next) => {
+      const from = ctx.from;
+      if (!from) return next();
+
+      // Skip kalau bukan user biasa (bot, channel, anonymous admin)
+      if (from.is_bot || from.id < 0) {
+        return next();
+      }
+
       const text = ctx.message.text.toLowerCase();
-      const userId = ctx.from?.id;
-      if (!userId) return next();
+      const userId = from.id;
 
       // Skip kalau admin
       try {
         const member = await ctx.getChatMember(userId);
-        if (member.status === "administrator" || member.status === "creator" || member.status === "owner") {
+        if (member.status === "administrator" || member.status === "creator") {
           return next();
         }
       } catch (e) {
